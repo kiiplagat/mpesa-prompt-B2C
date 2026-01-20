@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>M-Pesa Payment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px;
+            width: 100%;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        small {
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>M-Pesa STK Push</h2>
+        
+        <div>
+            <label>Phone Number:</label>
+            <input type="tel" id="phone" placeholder="0745914882" value="0745914882">
+            <small>Format: 07xx xxx xxx or 2547xx xxx xxx</small>
+        </div>
+        
+        <div>
+            <label>Amount (Ksh):</label>
+            <input type="number" id="amount" placeholder="100" value="1">
+            <small>Minimum: 1 Ksh</small>
+        </div>
+        
+        <button onclick="makePayment()">Pay with M-Pesa</button>
+        
+        <div id="result"></div>
+        
+        <div style="margin-top: 20px; font-size: 12px; color: #666;">
+            <p><strong>Testing Options:</strong></p>
+            <ul>
+                <li><strong>Sandbox Test:</strong> Use 254708374149</li>
+                <li><strong>Real Number:</strong> Use 0745914882 (production only)</li>
+                <li><strong>PIN:</strong> 174379 for sandbox</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function makePayment() {
+            let phone = document.getElementById('phone').value;
+            const amount = document.getElementById('amount').value;
+            const resultDiv = document.getElementById('result');
+            
+            // Clear previous result
+            resultDiv.innerHTML = '';
+            resultDiv.className = '';
+            
+            if (!phone || !amount) {
+                showMessage('Please fill all fields', 'error');
+                return;
+            }
+            
+            // Format phone number
+            phone = formatPhoneNumber(phone);
+            
+            if (!isValidPhone(phone)) {
+                showMessage('Invalid phone number. Use 07xxx or 2547xxx', 'error');
+                return;
+            }
+            
+            showMessage('Sending payment request to ' + phone + '...');
+            
+            try {
+                const response = await fetch('/stkpush', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        amount: amount
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (phone === '254708374149') {
+                        showMessage('✅ Check sandbox dashboard! Enter PIN: 174379', 'success');
+                    } else {
+                        showMessage('✅ Payment request sent! Check your phone for STK prompt.', 'success');
+                    }
+                } else {
+                    showMessage('❌ Error: ' + (data.error || 'Payment failed'), 'error');
+                }
+                
+            } catch (error) {
+                showMessage('❌ Network error. Is server running?', 'error');
+                console.error(error);
+            }
+        }
+        
+        function formatPhoneNumber(phone) {
+            // Remove all non-digits
+            phone = phone.replace(/\D/g, '');
+            
+            // Convert 07... to 2547...
+            if (phone.startsWith('0') && phone.length === 10) {
+                phone = '254' + phone.substring(1);
+            }
+            
+            // Convert 7... to 2547...
+            if (phone.startsWith('7') && phone.length === 9) {
+                phone = '254' + phone;
+            }
+            
+            return phone;
+        }
+        
+        function isValidPhone(phone) {
+            // Check if phone is 12 digits and starts with 254
+            return /^254[17]\d{8}$/.test(phone);
+        }
+        
+        function showMessage(message, type = '') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.className = type;
+        }
+    </script>
+</body>
+</html>
